@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from hashlib import md5
 from pathlib import Path
 import shutil
@@ -56,6 +57,10 @@ def remove_empty_dirs(dirpath):
 
 def deduplicate_directories(paths_to_deduplicate, reference_paths):
     '''Will go through `paths_to_deduplicate` recursively and move any file present in `reference_paths` to the `trash` directory'''
+    paths_to_deduplicate = [Path(path) for path in paths_to_deduplicate]
+    reference_paths = [Path(path) for path in reference_paths]
+    for path in paths_to_deduplicate + reference_paths:
+        assert path.exists(), f'"{path}" does not exist.'
     reference_hashes = set([filehash
                             for path in reference_paths
                             for filehash in get_file_hashes(tuple(get_files(path)))])
@@ -70,3 +75,11 @@ def deduplicate_directories(paths_to_deduplicate, reference_paths):
             if get_file_hash(filepath) in reference_hashes:
                 trash(filepath, trash_path, path_to_deduplicate)
         remove_empty_dirs(path_to_deduplicate)
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('--paths', nargs='+')
+    parser.add_argument('--reference-paths', nargs='+')
+    args = parser.parse_args()
+    deduplicate_directories(paths_to_deduplicate=args.paths, reference_paths=args.reference_paths)
