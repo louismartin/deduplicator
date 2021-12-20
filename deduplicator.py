@@ -61,9 +61,9 @@ def deduplicate_directories(paths_to_deduplicate, reference_paths):
     reference_paths = [Path(path) for path in reference_paths]
     for path in paths_to_deduplicate + reference_paths:
         assert path.exists(), f'"{path}" does not exist.'
-    reference_hashes = set([filehash
-                            for path in reference_paths
-                            for filehash in get_file_hashes(tuple(get_files(path)))])
+    reference_hashes = set(
+        [filehash for path in reference_paths for filehash in get_file_hashes(tuple(get_files(path)))]
+    )
     trash_name = 'deduplicator_trash'
     for path_to_deduplicate in paths_to_deduplicate:
         trash_path = path_to_deduplicate / trash_name
