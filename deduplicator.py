@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 def get_files(dirpath):
     paths = []
-    for path in tqdm(Path(dirpath).rglob('*'), 'Getting files'):
+    for path in tqdm(Path(dirpath).rglob("*"), "Getting files"):
         if not path.is_file():
             continue
         paths.append(path)
@@ -24,20 +24,20 @@ def get_file_hash(filepath):
 
 @lru_cache()
 def get_file_hashes(filepaths):
-    return [get_file_hash(path) for path in tqdm(filepaths, desc='Computing hashes')]
+    return [get_file_hash(path) for path in tqdm(filepaths, desc="Computing hashes")]
 
 
 def trash(path, trash_path, base_dirpath):
     target_path = trash_path / path.relative_to(base_dirpath)
     target_path.parent.mkdir(parents=True, exist_ok=True)
     if target_path.exists():
-        raise FileExistsError(f'File already exists: {target_path}')
+        raise FileExistsError(f"File already exists: {target_path}")
     shutil.move(path, target_path)
 
 
 def is_dir_empty(dirpath):
-    for path in Path(dirpath).rglob('*'):
-        if path.name == '.DS_Store':
+    for path in Path(dirpath).rglob("*"):
+        if path.name == ".DS_Store":
             continue
         if not path.is_dir():
             return False
@@ -47,7 +47,7 @@ def is_dir_empty(dirpath):
 
 
 def remove_empty_dirs(dirpath):
-    for path in Path(dirpath).rglob('*'):
+    for path in Path(dirpath).rglob("*"):
         if not path.is_dir():
             continue
         if not is_dir_empty(path):
@@ -56,7 +56,7 @@ def remove_empty_dirs(dirpath):
 
 
 def deduplicate_directories(paths_to_deduplicate, reference_paths):
-    '''Will go through `paths_to_deduplicate` recursively and move any file present in `reference_paths` to the `trash` directory'''
+    """Will go through `paths_to_deduplicate` recursively and move any file present in `reference_paths` to the `trash` directory"""
     paths_to_deduplicate = [Path(path) for path in paths_to_deduplicate]
     reference_paths = [Path(path) for path in reference_paths]
     for path in paths_to_deduplicate + reference_paths:
@@ -64,22 +64,22 @@ def deduplicate_directories(paths_to_deduplicate, reference_paths):
     reference_hashes = set(
         [filehash for path in reference_paths for filehash in get_file_hashes(tuple(get_files(path)))]
     )
-    trash_name = 'deduplicator_trash'
+    trash_name = "deduplicator_trash"
     for path_to_deduplicate in paths_to_deduplicate:
         trash_path = path_to_deduplicate / trash_name
-        for filepath in tqdm(get_files(path_to_deduplicate), 'Cleaning'):
+        for filepath in tqdm(get_files(path_to_deduplicate), "Cleaning"):
             if filepath.name == trash_name:
                 continue
-            if filepath.name.startswith('.'):
+            if filepath.name.startswith("."):
                 continue
             if get_file_hash(filepath) in reference_hashes:
                 trash(filepath, trash_path, path_to_deduplicate)
         remove_empty_dirs(path_to_deduplicate)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument('--paths', nargs='+')
-    parser.add_argument('--reference-paths', nargs='+')
+    parser.add_argument("--paths", nargs="+")
+    parser.add_argument("--reference-paths", nargs="+")
     args = parser.parse_args()
     deduplicate_directories(paths_to_deduplicate=args.paths, reference_paths=args.reference_paths)
