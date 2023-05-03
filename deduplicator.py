@@ -1,4 +1,3 @@
-from argparse import ArgumentParser
 from hashlib import md5
 from pathlib import Path
 import shutil
@@ -7,6 +6,7 @@ from typing import DefaultDict
 
 from imohash import hashfile
 from tqdm import tqdm
+import fire
 
 
 def yield_files(directory_path):
@@ -74,7 +74,7 @@ def is_file_in_paths(filepath, paths):
     return get_file_hash(filepath) in get_file_hashes(paths)
 
 
-def deduplicate_directory(directory_path, reference_filepaths):
+def deduplicate_directory(directory_path, reference_filepaths, dry_run=False):
     # We will use this mapping as a first quick filter on filenames to avoid computing hashes for all files
     trash_dir = get_trash_dir(directory_path)
     reference_names_to_path = get_names_to_paths(reference_filepaths)
@@ -84,17 +84,20 @@ def deduplicate_directory(directory_path, reference_filepaths):
             continue
         if filepath.name.startswith("."):
             continue
-        if not filepath.name in reference_names_to_path:
+        if filepath.name not in reference_names_to_path:
             continue
         candidate_reference_filepaths = reference_names_to_path[filepath.name]
         try:
             if is_file_in_paths(filepath, candidate_reference_filepaths):
-                trash_file(filepath, directory_path)
+                if not dry_run:
+                    trash_file(filepath, directory_path)
+                else:
+                    print(f"Would trash {filepath}")
         except OSError as e:
             print(f"Could not deduplicate {filepath} due to {e}")
 
 
-def deduplicate_directories(paths_to_deduplicate, reference_paths):
+def deduplicate_directories(paths_to_deduplicate, reference_paths, dry_run=False):
     """Will go through `paths_to_deduplicate` recursively and move any file present in `reference_paths` to the `trash` directory"""
     paths_to_deduplicate = [Path(path) for path in paths_to_deduplicate]
     reference_paths = [Path(path) for path in reference_paths]
@@ -106,12 +109,8 @@ def deduplicate_directories(paths_to_deduplicate, reference_paths):
         for filepath in tqdm(yield_files(reference_path), f"Getting files from {reference_path}")
     ]
     for path_to_deduplicate in paths_to_deduplicate:
-        deduplicate_directory(directory_path=path_to_deduplicate, reference_filepaths=reference_filepaths)
+        deduplicate_directory(directory_path=path_to_deduplicate, reference_filepaths=reference_filepaths, dry_run=dry_run)
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument("--paths", nargs="+")
-    parser.add_argument("--reference-paths", nargs="+")
-    args = parser.parse_args()
-    deduplicate_directories(paths_to_deduplicate=args.paths, reference_paths=args.reference_paths)
+    fire.Fire(deduplicate_directories)
