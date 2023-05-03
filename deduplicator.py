@@ -17,6 +17,19 @@ def yield_files(directory_path):
 
 
 @lru_cache(maxsize=100000)
+def cached_get_files(directory_path, reset_progress_bar=True):
+    if reset_progress_bar:
+        cached_get_files.progress_bar = tqdm(desc=f"Getting files from {directory_path}", unit=" files")
+    if directory_path.is_file():
+        cached_get_files.progress_bar.update(1)
+        return [directory_path]
+    files = [subpath for path in Path(directory_path).iterdir() for subpath in cached_get_files(path, reset_progress_bar=False)]
+    if reset_progress_bar:
+        cached_get_files.progress_bar.close()  # Otherwise it will be closed by the next call to this function and display an additional line when garbage collected
+    return files
+
+
+@lru_cache(maxsize=100000)
 def get_file_hash(filepath):
     try:
         return md5((hashfile(filepath, hexdigest=True) + Path(filepath).name).encode()).hexdigest()
@@ -106,7 +119,7 @@ def deduplicate_directories(paths_to_deduplicate, reference_paths, dry_run=False
     reference_filepaths = [
         filepath
         for reference_path in reference_paths
-        for filepath in tqdm(yield_files(reference_path), f"Getting files from {reference_path}")
+        for filepath in tqdm(cached_get_files(reference_path), f"Getting files from {reference_path}")
     ]
     for path_to_deduplicate in paths_to_deduplicate:
         deduplicate_directory(directory_path=path_to_deduplicate, reference_filepaths=reference_filepaths, dry_run=dry_run)
